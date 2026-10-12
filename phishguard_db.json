@@ -1,0 +1,14 @@
+{
+  "ruleVersion": 1,
+  "clients": [],
+  "heartbeats": [],
+  "threatAlerts": [],
+  "whitelistRules": [],
+  "phishingRules": [],
+  "removalRequests": [],
+  "admin": {
+    "username": "admin",
+    "passwordHash": "28a5e2d7726bf2f12aadf95f091c32d70a6936a8bb5bc118e2f649fd6ce1075a",
+    "salt": "9a15afb5e24aded8f8bac3ffa66ac759"
+  }
+}

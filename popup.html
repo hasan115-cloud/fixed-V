@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PhishGuard</title>
+<style>
+    body {
+        width: 340px;
+        margin: 0;
+        padding: 14px;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: #0d0d0d;
+        color: #e4e9f0;
+        box-sizing: border-box;
+    }
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #262626;
+        margin-bottom: 10px;
+    }
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .brand { font-weight: 700; font-size: 1.05rem; color: #ffffff; }
+    .tagline { font-size: 0.7rem; color: #6b7d99; }
+
+    .server-status-pill {
+        font-size: 0.68rem;
+        padding: 3px 8px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(255,255,255,0.06);
+        color: #9aabc4;
+        cursor: pointer;
+    }
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #6b7d99;
+    }
+    .status-dot.online { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .status-dot.offline { background: #ff6b7a; }
+
+    .url-box {
+        background: #000000;
+        padding: 7px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        word-break: break-all;
+        color: #d4d4d4;
+        margin-bottom: 10px;
+    }
+
+    /* Verdict card */
+    .verdict-card { text-align:center; padding:14px; border-radius:10px; margin-bottom:10px; }
+    .vc-safe      { background: rgba(25,135,84,0.18); border: 1px solid rgba(74, 222, 128, 0.3); }
+    .vc-suspicious{ background: rgba(255,193,7,0.18); border: 1px solid rgba(255, 193, 7, 0.3); }
+    .vc-phishing  { background: rgba(220,53,69,0.18); border: 1px solid rgba(220, 53, 69, 0.3); }
+    .vc-loading   { background: #262626; }
+    .verdict-icon  { font-size:2rem; margin-bottom:4px; }
+    .verdict-label { font-weight:700; font-size:1.15rem; }
+    .verdict-score { font-size:0.85rem; opacity:0.85; margin-top:4px; }
+    .verdict-safe      { color:#4ade80; }
+    .verdict-suspicious{ color:#ffc107; }
+    .verdict-phishing  { color:#ff6b7a; }
+
+    /* Reasons */
+    .reasons-title { font-size:0.72rem; text-transform:uppercase; color:#6b7d99; margin-bottom:5px; }
+    .reason-item {
+        font-size:0.78rem; padding:5px 8px; margin-bottom:4px;
+        background:#000000; border-radius:5px; color:#c4cfe0;
+    }
+
+    /* Page stats bar */
+    .stats-bar {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 10px;
+        font-size: 0.75rem;
+    }
+    .stat-chip {
+        flex: 1;
+        text-align: center;
+        padding: 5px 4px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    .stat-phishing  { background: rgba(220,53,69,0.2);  color: #ff6b7a; }
+    .stat-suspicious{ background: rgba(255,193,7,0.18); color: #ffc107; }
+    .stat-safe      { background: rgba(25,135,84,0.18); color: #4ade80; }
+    .stat-total     { background: rgba(79,209,255,0.1); color: #ffffff; }
+
+    /* Trust domain */
+    .trust-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        font-size: 0.76rem;
+        color: #6b7d99;
+    }
+    .btn-trust {
+        flex-shrink: 0;
+        background: transparent;
+        color: #ffffff;
+        border: 1px solid #ffffff;
+        padding: 4px 10px;
+        border-radius: 5px;
+        font-size: 0.74rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .btn-trust:hover   { background: rgba(79,209,255,0.12); }
+    .btn-trust.trusted { color: #4ade80; border-color: #4ade80; cursor: default; }
+    .btn-untrust {
+        background: transparent;
+        color: #ff6b7a;
+        border: none;
+        font-size: 0.7rem;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+    }
+
+    /* Rescan button */
+    .btn-rescan {
+        width:100%; background:#1eb163; color:#fff;
+        border:none; padding:9px; border-radius:6px;
+        font-weight:600; cursor:pointer; margin-top:6px;
+    }
+    .btn-rescan:hover     { background:#179c54; }
+    .btn-rescan:disabled  { background:#2a3a52; cursor:not-allowed; }
+
+    /* Settings section modal / toggle */
+    .settings-panel {
+        margin-top: 10px;
+        padding: 10px;
+        background: #000000;
+        border-radius: 8px;
+        border: 1px solid #262626;
+    }
+    .input-field {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        color: #e4e9f0;
+        padding: 6px 8px;
+        border-radius: 5px;
+        font-size: 0.74rem;
+        box-sizing: border-box;
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+    .btn-small {
+        background: #ffffff;
+        color: #000000;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-small:hover { background: #d4d4d4; }
+
+    /* Recently scanned */
+    .recent-section { margin-top:10px; }
+    .recent-toggle {
+        width:100%; background:transparent; border:none; color:#6b7d99;
+        font-size:0.72rem; text-align:left; cursor:pointer; padding:4px 0;
+        display:flex; align-items:center; justify-content:space-between;
+    }
+    .recent-toggle:hover { color:#9aabc4; }
+    .recent-list { margin-top:5px; }
+    .recent-item {
+        display:flex; align-items:center; gap:6px;
+        padding:5px 7px; border-radius:5px; margin-bottom:3px;
+        background:#000000; font-size:0.72rem; cursor:pointer;
+    }
+    .recent-item:hover { background:#16263b; }
+    .recent-url { flex:1; color:#d4d4d4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .recent-verdict { flex-shrink:0; font-weight:700; font-size:0.68rem; }
+    .rv-phishing  { color:#ff6b7a; }
+    .rv-suspicious{ color:#ffc107; }
+    .rv-safe      { color:#4ade80; }
+
+    .sound-btn {
+        background:transparent; border:none; color:#6b7d99;
+        font-size:0.85rem; cursor:pointer; padding:0;
+    }
+    .sound-btn:hover { color:#9aabc4; }
+
+    /* Tamper protection & Uninstall */
+    .tamper-box {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: #141414;
+        border: 1px solid #262626;
+        border-radius: 6px;
+    }
+    .tamper-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .tamper-title {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #d4d4d4;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .tamper-status {
+        font-size: 0.62rem;
+        font-family: monospace;
+        color: #4ade80;
+        background: rgba(74, 222, 128, 0.1);
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        padding: 1px 4px;
+        border-radius: 3px;
+    }
+    .btn-uninstall-trigger {
+        background: transparent;
+        color: #ff6b7a;
+        border: 1px solid rgba(255, 107, 122, 0.4);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .btn-uninstall-trigger:hover {
+        background: rgba(220, 53, 69, 0.2);
+        color: #ff8593;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.88);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        z-index: 999;
+        box-sizing: border-box;
+    }
+    .modal-card {
+        background: #161616;
+        border: 1px solid #333333;
+        border-radius: 8px;
+        padding: 14px;
+        width: 100%;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+    }
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    .modal-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #ff6b7a;
+    }
+    .modal-close-btn {
+        background: transparent;
+        border: none;
+        color: #6b7d99;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .modal-desc {
+        font-size: 0.7rem;
+        color: #9aabc4;
+        margin: 0 0 10px 0;
+        line-height: 1.35;
+    }
+    .modal-error {
+        background: rgba(220, 53, 69, 0.2);
+        border: 1px solid rgba(220, 53, 69, 0.4);
+        color: #ff8593;
+        padding: 6px 8px;
+        border-radius: 4px;
+        font-size: 0.68rem;
+        margin-bottom: 8px;
+        line-height: 1.25;
+    }
+    .modal-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #c4cfe0;
+        display: block;
+        margin-bottom: 2px;
+    }
+    .modal-input {
+        width: 100%;
+        background: #000000;
+        border: 1px solid #2e2e2e;
+        color: #ffffff;
+        padding: 6px 8px;
+        border-radius: 5px;
+        font-size: 0.74rem;
+        box-sizing: border-box;
+        margin-bottom: 8px;
+        outline: none;
+    }
+    .modal-input:focus { border-color: #ff6b7a; }
+    .modal-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+    }
+    .btn-cancel {
+        flex: 1;
+        background: #252525;
+        border: 1px solid #3a3a3a;
+        color: #d4d4d4;
+        padding: 6px;
+        border-radius: 5px;
+        font-size: 0.72rem;
+        cursor: pointer;
+    }
+    .btn-confirm-uninstall {
+        flex: 1.6;
+        background: #dc3545;
+        border: none;
+        color: #ffffff;
+        padding: 6px;
+        border-radius: 5px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .btn-confirm-uninstall:hover { background: #b02a37; }
+    .btn-confirm-uninstall:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .footer {
+        text-align:center; font-size:0.66rem; color:#6b7d99;
+        margin-top:10px; padding-top:8px; border-top:1px solid #262626;
+        display:flex; align-items:center; justify-content:space-between;
+    }
+    .spinner {
+        display:inline-block; width:18px; height:18px;
+        border:3px solid #2a2a2a; border-top:3px solid #ffffff;
+        border-radius:50%; animation:spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <img src="icon.png" width="22" height="22" alt="PhishGuard" style="border-radius:4px;" />
+        <div>
+            <div class="brand">PhishGuard</div>
+            <div class="tagline">Endpoint Protection Agent</div>
+        </div>
+    </div>
+    <div class="server-status-pill" id="serverStatusPill" title="PhishGuard Central Protection Network">
+        <span class="status-dot" id="serverStatusDot"></span>
+        <span id="serverStatusText">Protected</span>
+    </div>
+</div>
+
+<div class="url-box" id="currentUrl">Loading...</div>
+
+<div id="verdictArea" class="verdict-card vc-loading">
+    <div class="spinner"></div>
+    <div style="margin-top:6px;font-size:0.85rem;color:#9aabc4;">Scanning page...</div>
+</div>
+
+<div id="reasonsArea" style="display:none;">
+    <div class="reasons-title">Risk Signals & Heuristics</div>
+    <div id="reasonsList"></div>
+</div>
+
+<!-- Page link scan stats -->
+<div id="statsBar" class="stats-bar" style="display:none;">
+    <div class="stat-chip stat-total"  id="statTotal">0 scanned</div>
+    <div class="stat-chip stat-phishing"   id="statPhishing">0 phishing</div>
+    <div class="stat-chip stat-suspicious" id="statSuspicious">0 suspicious</div>
+    <div class="stat-chip stat-safe"   id="statSafe">0 safe</div>
+</div>
+
+<!-- Trust domain -->
+<div class="trust-row" id="trustRow" style="display:none;">
+    <span id="trustLabel">Trust this domain?</span>
+    <button class="btn-trust" id="trustBtn">+ Trust</button>
+    <button class="btn-untrust" id="untrustBtn" style="display:none;">Remove</button>
+</div>
+
+<button id="rescanBtn" class="btn-rescan">🔄 Re-scan Page Now</button>
+
+<!-- Enterprise Tamper Protection & Admin Uninstall Section -->
+<div class="tamper-box" id="tamperBox">
+    <div class="tamper-header">
+        <div class="tamper-title">
+            <span>🔒 Tamper Protection</span>
+            <span class="tamper-status">Enforced</span>
+        </div>
+        <button class="btn-uninstall-trigger" id="openUninstallModalBtn">Request Removal</button>
+    </div>
+</div>
+
+<!-- Admin Verification Modal for Protected Uninstall / Removal Request -->
+<div class="modal-overlay" id="uninstallModal" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title">PhishGuard Endpoint Protection</div>
+            <button class="modal-close-btn" id="closeUninstallModalBtn">✕</button>
+        </div>
+        <p class="modal-desc" id="modalDescText">
+            This endpoint agent is governed by Enterprise Security Policy. Extension removal requires central administrator authorization.
+        </p>
+        <div id="uninstallError" class="modal-error" style="display:none;"></div>
+        <div id="uninstallSuccessNotice" class="modal-desc" style="display:none;background:rgba(25,135,84,0.18);border:1px solid rgba(25,135,84,0.4);padding:8px;border-radius:6px;color:#4ade80;">
+            <strong>PhishGuard Endpoint Protection</strong><br/>
+            Your extension removal request has been sent to the administrator. Please wait for approval. PhishGuard protection remains active while your request is pending.
+        </div>
+        <form id="uninstallForm">
+            <!-- Mode 1: Request Removal -->
+            <div id="requestModeSection">
+                <label class="modal-label">Removal Justification / Reason</label>
+                <input type="text" id="removalReasonInput" class="modal-input" placeholder="e.g. Device maintenance or hardware replacement" autocomplete="off" />
+                <div class="modal-actions" style="margin-top:10px;">
+                    <button type="button" class="btn-cancel" id="cancelUninstallBtn">Close</button>
+                    <button type="button" class="btn-confirm-uninstall" id="submitRequestBtn" style="background:#0284c7;">Submit Removal Request</button>
+                </div>
+            </div>
+
+            <!-- Mode 2: Immediate Admin Removal with Credentials or Token -->
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #262626;">
+                <div style="font-size:0.68rem;color:#888;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+                    <span>Direct Admin / Token Authorization</span>
+                    <button type="button" id="toggleDirectAuthBtn" style="background:transparent;border:none;color:#4ade80;cursor:pointer;font-size:0.68rem;padding:0;text-decoration:underline;">
+                        Have Token / Admin Credentials?
+                    </button>
+                </div>
+                <div id="directAuthFields" style="display:none;">
+                    <label class="modal-label">15-Min Authorization Token (or Admin User)</label>
+                    <input type="text" id="adminUserInput" class="modal-input" placeholder="Enter Token (pg_auth_...) or admin username" autocomplete="off" />
+                    <label class="modal-label" id="adminPassLabel">Admin Password (leave blank if using Token)</label>
+                    <input type="password" id="adminPassInput" class="modal-input" placeholder="Enter admin password" autocomplete="off" />
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-confirm-uninstall" id="submitUninstallBtn">Authorize & Remove</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+</div>
+
+<!-- Server Connection & Diagnostics Modal -->
+<div class="modal-overlay" id="serverSettingsModal" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title" style="color:#ffffff;">Enterprise Server Connection</div>
+            <button class="modal-close-btn" id="closeServerSettingsBtn">✕</button>
+        </div>
+        <p class="modal-desc">
+            PhishGuard synchronizes real-time phishing rules, blocks, and device heartbeats with your central security hub.
+        </p>
+        <div id="connectionStatusBox" style="background:#0a0a0a;border:1px solid #262626;border-radius:6px;padding:8px;font-size:0.72rem;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:#888;">Device ID:</span>
+                <span id="diagnosticClientId" style="color:#ffffff;font-family:monospace;font-size:0.68rem;">loading...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:#888;">Active Status:</span>
+                <span id="diagnosticStatusText" style="color:#4ade80;">Checking...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#888;">Server Health:</span>
+                <span id="diagnosticPingText" style="color:#888;">--</span>
+            </div>
+        </div>
+        <div id="serverSettingsError" class="modal-error" style="display:none;"></div>
+        <div id="serverSettingsSuccess" class="modal-desc" style="display:none;background:rgba(25,135,84,0.18);border:1px solid rgba(25,135,84,0.4);padding:8px;border-radius:6px;color:#4ade80;"></div>
+        <div>
+            <label class="modal-label" style="font-size:0.7rem;color:#aaa;display:block;margin-bottom:4px;">Security Hub URL</label>
+            <input type="text" id="customServerUrlInput" class="modal-input" placeholder="https://your-domain.vercel.app" autocomplete="off" />
+            <div class="modal-actions" style="margin-top:10px;display:flex;gap:6px;">
+                <button type="button" class="btn-cancel" id="testServerBtn" style="background:#262626;color:#ffffff;">Test Ping</button>
+                <button type="button" class="btn-cancel" id="resetServerBtn" style="background:#1a1a1a;color:#888;">Reset Default</button>
+                <button type="button" class="btn-confirm-uninstall" id="saveServerBtn" style="background:#0284c7;">Save & Sync</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <span>PhishGuard v1.4 • <span style="color:#4ade80;font-family:monospace;">[ PROTECTED ]</span></span>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <button class="sound-btn" id="soundBtn" title="Toggle sound alerts">🔔</button>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
