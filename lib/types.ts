@@ -41,7 +41,7 @@ export interface EnrolledClient {
   firstSeen?: string;
   lastSeen: string;
   status: "ENROLLED" | "OFFLINE" | "SUSPENDED";
-  connectionStatus?: "CONNECTED" | "IDLE" | "OFFLINE" | "ACTIVE";
+  connectionStatus?: "ONLINE" | "OFFLINE" | "CONNECTED" | "IDLE" | "ACTIVE";
   ip?: string;
   telemetryStats: {
     totalScanned: number;

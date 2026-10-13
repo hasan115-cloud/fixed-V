@@ -74,6 +74,17 @@ export const Header: React.FC<HeaderProps> = ({
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-[#ffffff]" : ""}`} />
         </button>
 
+        {/* Download Project ZIP */}
+        <a
+          href="/api/project/download-zip"
+          download="phishguard-enterprise-fixed.zip"
+          className="hidden sm:flex items-center gap-2 bg-[#1f1f1f] hover:bg-[#2b2b2b] text-neutral-200 border border-[#333] text-xs font-semibold px-3 py-2 rounded-lg transition-colors shrink-0 whitespace-nowrap"
+          title="Download complete audited and corrected project ZIP archive"
+        >
+          <Download className="w-4 h-4 text-emerald-400" />
+          <span>Project ZIP</span>
+        </a>
+
         {/* Download Extension (.ZIP) Primary CTA */}
         <a
           href={getDownloadExtensionUrl()}

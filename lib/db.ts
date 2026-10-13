@@ -15,9 +15,9 @@ import {
 } from "./types";
 import { IDatabase, UrlEventFilters, UrlEventsResult, DashboardStatsResult, ReportDataResult } from "./dbTypes";
 import { PostgresDatabase } from "./pgdb";
-import { SupabaseRestDatabase } from "./supabaseRestDb";
 import { ResilientDatabase } from "./resilientDb";
-import { getSupabaseClient, isApiKey, isPostgresUrl, parseSupabaseConnection } from "./supabase";
+import { isPostgresUrl } from "./supabase";
+
 
 const IS_SERVERLESS = Boolean(
   process.env.VERCEL ||
@@ -1092,53 +1092,17 @@ export const FileDatabaseImpl = FileDatabase;
  * know or care which backend is active.
  */
 function selectDatabase(): IDatabase {
-  const rawUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL || process.env.POSTGRES_URL;
-  const isKey = rawUrl && isApiKey(rawUrl);
-
-  // If someone passed an API key in DATABASE_URL, set it as SUPABASE_KEY
-  if (isKey && rawUrl) {
-    process.env.SUPABASE_KEY = rawUrl.trim();
-  }
-
-  // Check if a direct Postgres connection string is available
-  const hasValidPostgres = rawUrl && isPostgresUrl(rawUrl);
-
-  // Check if a Supabase REST client can be initialized
-  const supabaseClient = getSupabaseClient();
-  const config = parseSupabaseConnection(rawUrl);
-
-  let pgDb: PostgresDatabase | null = null;
-  if (hasValidPostgres && rawUrl) {
-    try {
-      pgDb = new PostgresDatabase(rawUrl);
-      console.log("PhishGuard: Initialized Postgres database pooler.");
-    } catch (e) {
-      console.warn("Notice: Failed to initialize Postgres database:", e);
-    }
-  }
-
-  let restDb: SupabaseRestDatabase | null = null;
-  if (supabaseClient) {
-    try {
-      const targetUrl = config?.supabaseUrl || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-      restDb = new SupabaseRestDatabase(supabaseClient, targetUrl);
-      console.log("PhishGuard: Initialized Supabase REST database client (supports Vercel serverless & API keys).");
-    } catch (e) {
-      console.warn("Notice: Failed to initialize Supabase REST database:", e);
-    }
-  }
-
   const fileDb = new FileDatabase();
+  const rawUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL || process.env.POSTGRES_URL;
 
-  // Prefer Postgres if configured, with Supabase REST and FileDatabase fallbacks
-  if (pgDb) {
-    const secondary = restDb || fileDb;
-    return new ResilientDatabase(pgDb, secondary);
-  }
-
-  // If Supabase REST client is available
-  if (restDb) {
-    return new ResilientDatabase(restDb, fileDb);
+  if (rawUrl && isPostgresUrl(rawUrl)) {
+    try {
+      const pgDb = new PostgresDatabase(rawUrl);
+      console.log("PhishGuard: Initialized PostgreSQL / Supabase pooler.");
+      return new ResilientDatabase(pgDb, fileDb);
+    } catch (e) {
+      console.warn("Notice: Failed to initialize PostgreSQL pooler, using file storage:", e);
+    }
   }
 
   console.log("PhishGuard: using local file-backed storage — correct for a single long-lived process.");
