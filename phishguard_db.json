@@ -1,14 +1,291 @@
 {
-  "ruleVersion": 1,
-  "clients": [],
-  "heartbeats": [],
-  "threatAlerts": [],
-  "whitelistRules": [],
-  "phishingRules": [],
-  "removalRequests": [],
+  "ruleVersion": 6,
+  "clients": [
+    {
+      "id": "ws-finance-01",
+      "clientName": "Finance-Terminal-01",
+      "os": "Windows 11 Enterprise",
+      "browser": "Chrome 124.0.6367",
+      "platform": "x86_64",
+      "extensionVersion": "1.4.0",
+      "ruleVersion": 2,
+      "firstEnrolled": "2026-10-10T08:00:00.000Z",
+      "lastSeen": "2026-10-13T09:50:00.000Z",
+      "status": "ENROLLED",
+      "ip": "192.168.10.45",
+      "telemetryStats": {
+        "totalScanned": 24,
+        "safeEvaluated": 21,
+        "suspiciousDetected": 2,
+        "phishingBlocked": 1
+      }
+    },
+    {
+      "id": "ws-dev-mac-04",
+      "clientName": "DevOps-MacBook-Pro",
+      "os": "macOS Sonoma 14.5",
+      "browser": "Chrome 124.0.6367",
+      "platform": "arm64",
+      "extensionVersion": "1.4.0",
+      "ruleVersion": 2,
+      "firstEnrolled": "2026-10-10T09:15:00.000Z",
+      "lastSeen": "2026-10-13T09:52:00.000Z",
+      "status": "ENROLLED",
+      "ip": "192.168.20.112",
+      "telemetryStats": {
+        "totalScanned": 38,
+        "safeEvaluated": 36,
+        "suspiciousDetected": 1,
+        "phishingBlocked": 1
+      }
+    },
+    {
+      "id": "ws-sales-09",
+      "clientName": "Sales-ThinkPad-X1",
+      "os": "Windows 11 Pro",
+      "browser": "Chrome 123.0.6312",
+      "platform": "x86_64",
+      "extensionVersion": "1.4.0",
+      "ruleVersion": 2,
+      "firstEnrolled": "2026-10-11T11:30:00.000Z",
+      "lastSeen": "2026-10-13T09:48:00.000Z",
+      "status": "ENROLLED",
+      "ip": "192.168.30.88",
+      "telemetryStats": {
+        "totalScanned": 19,
+        "safeEvaluated": 16,
+        "suspiciousDetected": 2,
+        "phishingBlocked": 1
+      }
+    },
+    {
+      "id": "ws-exec-surface",
+      "clientName": "Executive-Surface-Laptop",
+      "os": "Windows 11 Enterprise",
+      "browser": "Edge 124.0.2478",
+      "platform": "x86_64",
+      "extensionVersion": "1.4.0",
+      "ruleVersion": 2,
+      "firstEnrolled": "2026-10-11T14:00:00.000Z",
+      "lastSeen": "2026-10-13T09:51:00.000Z",
+      "status": "ENROLLED",
+      "ip": "192.168.10.15",
+      "telemetryStats": {
+        "totalScanned": 15,
+        "safeEvaluated": 14,
+        "suspiciousDetected": 1,
+        "phishingBlocked": 0
+      }
+    },
+    {
+      "id": "ws-ops-linux-02",
+      "clientName": "SecOps-Ubuntu-Station",
+      "os": "Ubuntu 22.04 LTS",
+      "browser": "Chrome 124.0.6367",
+      "platform": "x86_64",
+      "extensionVersion": "1.4.0",
+      "ruleVersion": 2,
+      "firstEnrolled": "2026-10-12T07:45:00.000Z",
+      "lastSeen": "2026-10-13T09:53:00.000Z",
+      "status": "ENROLLED",
+      "ip": "192.168.40.7",
+      "telemetryStats": {
+        "totalScanned": 31,
+        "safeEvaluated": 29,
+        "suspiciousDetected": 1,
+        "phishingBlocked": 1
+      }
+    }
+  ],
+  "heartbeats": [
+    {
+      "id": "hb_1791886282056_mpd11",
+      "clientId": "test-agent-mv6itr44",
+      "timestamp": "2026-10-13T10:11:22.056Z",
+      "stats": {
+        "total": 10,
+        "safe": 8,
+        "suspicious": 1,
+        "phishing": 1
+      }
+    },
+    {
+      "id": "hb_1791885916888_jnkya",
+      "clientId": "test-agent-mv6ilvqg",
+      "timestamp": "2026-10-13T10:05:16.888Z",
+      "stats": {
+        "total": 10,
+        "safe": 8,
+        "suspicious": 1,
+        "phishing": 1
+      }
+    }
+  ],
+  "threatAlerts": [
+    {
+      "clientId": "test-agent-mv6itr44",
+      "clientName": "Audit-Workstation-01",
+      "url": "http://malicious-phishing-login-test.xyz/verify",
+      "domain": "malicious-phishing-login-test.xyz",
+      "score": 0.98,
+      "reasons": [
+        "Phishing pattern matched",
+        "Suspicious credential field"
+      ],
+      "source": "e2e-audit",
+      "id": "alt_1791886282745_ktqzt",
+      "timestamp": "2026-10-13T10:11:22.745Z",
+      "status": "ACKNOWLEDGED"
+    },
+    {
+      "clientId": "test-agent-mv6ilvqg",
+      "clientName": "Audit-Workstation-01",
+      "url": "http://malicious-phishing-login-test.xyz/verify",
+      "domain": "malicious-phishing-login-test.xyz",
+      "score": 0.98,
+      "reasons": [
+        "Phishing pattern matched",
+        "Suspicious credential field"
+      ],
+      "source": "e2e-audit",
+      "id": "alt_1791885918103_wfxez",
+      "timestamp": "2026-10-13T10:05:18.103Z",
+      "status": "ACKNOWLEDGED"
+    },
+    {
+      "id": "alt_001",
+      "clientId": "ws-finance-01",
+      "clientName": "Finance-Terminal-01",
+      "url": "https://micros0ft-online-security-login.xyz/auth/verify",
+      "domain": "micros0ft-online-security-login.xyz",
+      "score": 0.98,
+      "reasons": [
+        "Matched Administrator Phishing Rule: *micros0ft*",
+        "Typosquatting brand impersonation",
+        "High-risk top-level domain (.xyz)"
+      ],
+      "source": "chrome-extension",
+      "timestamp": "2026-10-13T08:30:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "alt_002",
+      "clientId": "ws-sales-09",
+      "clientName": "Sales-ThinkPad-X1",
+      "url": "http://paypal-verification-resolve-suspended.com/signin/account",
+      "domain": "paypal-verification-resolve-suspended.com",
+      "score": 0.95,
+      "reasons": [
+        "Matched Administrator Phishing Rule: *paypal*verify*",
+        "Credential harvesting form detected",
+        "Sensitive keyword cluster [verify, signin, account]"
+      ],
+      "source": "chrome-extension",
+      "timestamp": "2026-10-13T09:12:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "alt_003",
+      "clientId": "ws-ops-linux-02",
+      "clientName": "SecOps-Ubuntu-Station",
+      "url": "https://secure-payroll-direct-deposit.top/auth/login",
+      "domain": "secure-payroll-direct-deposit.top",
+      "score": 0.88,
+      "reasons": [
+        "Suspicious banking credential keyword",
+        "Untrusted high-risk TLD (.top)"
+      ],
+      "source": "chrome-extension",
+      "timestamp": "2026-10-12T16:45:00.000Z",
+      "status": "ACKNOWLEDGED"
+    }
+  ],
+  "whitelistRules": [
+    {
+      "id": "w_001",
+      "pattern": "*.corp-internal.net",
+      "description": "Internal enterprise intranet and SSO gateway",
+      "addedBy": "Security Operations",
+      "createdAt": "2026-10-10T08:00:00.000Z"
+    },
+    {
+      "id": "w_002",
+      "pattern": "github.com",
+      "description": "Enterprise code repository and CI/CD pipelines",
+      "addedBy": "Security Operations",
+      "createdAt": "2026-10-10T08:05:00.000Z"
+    },
+    {
+      "id": "w_003",
+      "pattern": "google.com",
+      "description": "Google Workspace & Cloud Console",
+      "addedBy": "Security Operations",
+      "createdAt": "2026-10-10T08:10:00.000Z"
+    }
+  ],
+  "phishingRules": [
+    {
+      "id": "p_001",
+      "pattern": "*micros0ft*",
+      "severity": "CRITICAL",
+      "reason": "Typosquatted domain mimicking Microsoft 365 identity",
+      "addedBy": "Security Operations",
+      "createdAt": "2026-10-10T08:20:00.000Z"
+    },
+    {
+      "id": "p_002",
+      "pattern": "*paypal*verify*",
+      "severity": "HIGH",
+      "reason": "Brand impersonation credential harvesting pattern",
+      "addedBy": "Security Operations",
+      "createdAt": "2026-10-10T08:25:00.000Z"
+    },
+    {
+      "id": "p_003",
+      "pattern": "*.zip",
+      "severity": "HIGH",
+      "reason": "High-risk executable or deceptive zip top-level domain",
+      "addedBy": "Security Operations",
+      "createdAt": "2026-10-10T08:30:00.000Z"
+    }
+  ],
+  "removalRequests": [
+    {
+      "id": "req_1791886284135_drksil",
+      "clientId": "test-agent-mv6itr44",
+      "clientName": "Audit-Workstation-01",
+      "requestedAt": "2026-10-13T10:11:24.135Z",
+      "status": "APPROVED",
+      "reason": "Hardware decomission audit",
+      "reviewedAt": "2026-10-13T10:11:25.342Z",
+      "reviewedBy": "admin",
+      "decisionNote": "Approved by enterprise security admin | Token consumed and agent uninstalled",
+      "tokenExpiresAt": "2026-10-13T10:26:25.342Z"
+    },
+    {
+      "id": "req_1791885919701_zsm4sd",
+      "clientId": "test-agent-mv6ilvqg",
+      "clientName": "Audit-Workstation-01",
+      "requestedAt": "2026-10-13T10:05:19.701Z",
+      "status": "APPROVED",
+      "reason": "Hardware decomission audit",
+      "reviewedAt": "2026-10-13T10:05:21.049Z",
+      "reviewedBy": "admin",
+      "decisionNote": "Approved by enterprise security admin | Token consumed and agent uninstalled",
+      "tokenExpiresAt": "2026-10-13T10:20:21.049Z"
+    },
+    {
+      "id": "req_demo_01",
+      "clientId": "ws-sales-09",
+      "clientName": "Sales-ThinkPad-X1",
+      "reason": "Scheduled laptop hardware refresh & replacement",
+      "status": "PENDING",
+      "createdAt": "2026-10-13T07:20:00.000Z"
+    }
+  ],
   "admin": {
     "username": "admin",
-    "passwordHash": "28a5e2d7726bf2f12aadf95f091c32d70a6936a8bb5bc118e2f649fd6ce1075a",
-    "salt": "9a15afb5e24aded8f8bac3ffa66ac759"
+    "passwordHash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+    "salt": "phishguard_salt_123"
   }
 }
