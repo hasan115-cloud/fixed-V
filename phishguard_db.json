@@ -1,5 +1,5 @@
 {
-  "ruleVersion": 10,
+  "ruleVersion": 12,
   "clients": [
     {
       "id": "ws-finance-01",
@@ -99,6 +99,17 @@
   ],
   "heartbeats": [
     {
+      "id": "hb_1791948251700_rvotx",
+      "clientId": "test-agent-mv7jpygg",
+      "timestamp": "2026-10-14T03:24:11.700Z",
+      "stats": {
+        "total": 10,
+        "safe": 8,
+        "suspicious": 1,
+        "phishing": 1
+      }
+    },
+    {
       "id": "hb_1791897655143_txhxa",
       "clientId": "test-agent-mv6plit5",
       "timestamp": "2026-10-13T13:20:55.143Z",
@@ -144,6 +155,21 @@
     }
   ],
   "threatAlerts": [
+    {
+      "clientId": "test-agent-mv7jpygg",
+      "clientName": "Audit-Workstation-01",
+      "url": "http://malicious-phishing-login-test.xyz/verify",
+      "domain": "malicious-phishing-login-test.xyz",
+      "score": 0.98,
+      "reasons": [
+        "Phishing pattern matched",
+        "Suspicious credential field"
+      ],
+      "source": "e2e-audit",
+      "id": "alt_1791948253284_j55ae",
+      "timestamp": "2026-10-14T03:24:13.284Z",
+      "status": "ACKNOWLEDGED"
+    },
     {
       "clientId": "test-agent-mv6plit5",
       "clientName": "Audit-Workstation-01",
@@ -302,6 +328,18 @@
     }
   ],
   "removalRequests": [
+    {
+      "id": "req_1791948255131_4crhe0",
+      "clientId": "test-agent-mv7jpygg",
+      "clientName": "Audit-Workstation-01",
+      "requestedAt": "2026-10-14T03:24:15.131Z",
+      "status": "APPROVED",
+      "reason": "Hardware decomission audit",
+      "reviewedAt": "2026-10-14T03:24:16.505Z",
+      "reviewedBy": "admin",
+      "decisionNote": "Approved by enterprise security admin | Token consumed and agent uninstalled",
+      "tokenExpiresAt": "2026-10-14T03:39:16.505Z"
+    },
     {
       "id": "req_1791897657092_vdn965",
       "clientId": "test-agent-mv6plit5",
