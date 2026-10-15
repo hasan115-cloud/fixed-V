@@ -3,13 +3,17 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  Edit2,
   Plus,
+  Power,
   RefreshCw,
   Search,
   Shield,
   ShieldAlert,
   ShieldCheck,
-  Trash2
+  Trash2,
+  X,
+  XCircle
 } from "lucide-react";
 import { PhishingRule, RuleSyncStatus, WhitelistRule } from "../types";
 import {
@@ -19,7 +23,9 @@ import {
   deletePhishingRule,
   deleteWhitelistRule,
   fetchRules,
-  fetchRuleSyncStatus
+  fetchRuleSyncStatus,
+  updatePhishingRule,
+  updateWhitelistRule
 } from "../api";
 
 export const SecurityRulesView: React.FC = () => {
@@ -28,6 +34,7 @@ export const SecurityRulesView: React.FC = () => {
   const [phishingRules, setPhishingRules] = useState<PhishingRule[]>([]);
   const [syncStatus, setSyncStatus] = useState<RuleSyncStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
   const [search, setSearch] = useState("");
 
   // Whitelist form state
@@ -40,6 +47,16 @@ export const SecurityRulesView: React.FC = () => {
   const [phSeverity, setPhSeverity] = useState<"HIGH" | "CRITICAL">("HIGH");
   const [phReason, setPhReason] = useState("");
   const [isAddingPh, setIsAddingPh] = useState(false);
+
+  // Edit Modal state
+  const [editingRule, setEditingRule] = useState<{
+    id: string;
+    type: "whitelist" | "phishing";
+    pattern: string;
+    descriptionOrReason: string;
+    severity?: "HIGH" | "CRITICAL";
+    enabled: boolean;
+  } | null>(null);
 
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -64,13 +81,18 @@ export const SecurityRulesView: React.FC = () => {
     loadData();
   }, []);
 
-  const handleBumpVersion = async () => {
+  const handleDeployRules = async () => {
+    setIsDeploying(true);
     try {
       const res = await bumpRuleVersion();
-      setMessage({ text: `Central rule version bumped to v${res.ruleVersion}. Connected agents will sync.` });
+      setMessage({
+        text: `✓ Deployed rules to fleet! Central rule version updated to v${res.ruleVersion}. Active browser extensions will synchronize automatically.`
+      });
       await loadData();
     } catch (e: any) {
-      setMessage({ text: `Failed to bump version: ${e.message}`, error: true });
+      setMessage({ text: `Failed to deploy rules: ${e.message}`, error: true });
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -82,12 +104,28 @@ export const SecurityRulesView: React.FC = () => {
       await addWhitelistRule(wlPattern.trim(), wlDesc.trim());
       setWlPattern("");
       setWlDesc("");
-      setMessage({ text: "Whitelist rule added successfully." });
+      setMessage({ text: "Whitelist rule saved and deployed to fleet." });
       await loadData();
     } catch (err: any) {
       setMessage({ text: `Failed to add rule: ${err.message}`, error: true });
     } finally {
       setIsAddingWl(false);
+    }
+  };
+
+  const handleToggleWhitelist = async (rule: WhitelistRule) => {
+    const newEnabled = rule.enabled === false ? true : false;
+    try {
+      await updateWhitelistRule(rule.id, { enabled: newEnabled });
+      setWhitelist(prev =>
+        prev.map(r => (r.id === rule.id ? { ...r, enabled: newEnabled } : r))
+      );
+      setMessage({
+        text: `Rule "${rule.pattern}" is now ${newEnabled ? "ENABLED (Active)" : "DISABLED (Inactive)"}.`
+      });
+      await loadData();
+    } catch (err: any) {
+      setMessage({ text: `Failed to toggle rule: ${err.message}`, error: true });
     }
   };
 
@@ -109,12 +147,28 @@ export const SecurityRulesView: React.FC = () => {
       await addPhishingRule(phPattern.trim(), phSeverity, phReason.trim());
       setPhPattern("");
       setPhReason("");
-      setMessage({ text: "Phishing blacklist rule added successfully." });
+      setMessage({ text: "Phishing blacklist rule saved and deployed to fleet." });
       await loadData();
     } catch (err: any) {
       setMessage({ text: `Failed to add rule: ${err.message}`, error: true });
     } finally {
       setIsAddingPh(false);
+    }
+  };
+
+  const handleTogglePhishing = async (rule: PhishingRule) => {
+    const newEnabled = rule.enabled === false ? true : false;
+    try {
+      await updatePhishingRule(rule.id, { enabled: newEnabled });
+      setPhishingRules(prev =>
+        prev.map(r => (r.id === rule.id ? { ...r, enabled: newEnabled } : r))
+      );
+      setMessage({
+        text: `Blacklist rule "${rule.pattern}" is now ${newEnabled ? "ENABLED (Active)" : "DISABLED (Inactive)"}.`
+      });
+      await loadData();
+    } catch (err: any) {
+      setMessage({ text: `Failed to toggle rule: ${err.message}`, error: true });
     }
   };
 
@@ -125,6 +179,33 @@ export const SecurityRulesView: React.FC = () => {
       setMessage({ text: "Phishing rule removed." });
     } catch (err: any) {
       setMessage({ text: `Failed to delete rule: ${err.message}`, error: true });
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRule) return;
+
+    try {
+      if (editingRule.type === "whitelist") {
+        await updateWhitelistRule(editingRule.id, {
+          pattern: editingRule.pattern,
+          description: editingRule.descriptionOrReason,
+          enabled: editingRule.enabled
+        });
+      } else {
+        await updatePhishingRule(editingRule.id, {
+          pattern: editingRule.pattern,
+          reason: editingRule.descriptionOrReason,
+          severity: editingRule.severity || "HIGH",
+          enabled: editingRule.enabled
+        });
+      }
+      setEditingRule(null);
+      setMessage({ text: "Rule updated successfully." });
+      await loadData();
+    } catch (err: any) {
+      setMessage({ text: `Failed to update rule: ${err.message}`, error: true });
     }
   };
 
@@ -150,7 +231,7 @@ export const SecurityRulesView: React.FC = () => {
             <h2 className="text-lg font-bold text-neutral-100">Central Security Policy & Rules</h2>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Rules configured here are pushed to all enrolled browser agents via background heartbeat synchronization.
+            Rules configured here are the authoritative source for phishing detection and whitelist enforcement across all connected extensions.
           </p>
         </div>
 
@@ -162,12 +243,13 @@ export const SecurityRulesView: React.FC = () => {
             </span>
           </div>
           <button
-            onClick={handleBumpVersion}
-            className="flex items-center gap-2 bg-[#1f1f1f] hover:bg-[#2a2a2a] border border-[#333] text-neutral-200 text-xs px-3 py-2 rounded-lg transition-colors font-medium"
-            title="Force push policy version bump to fleet"
+            onClick={handleDeployRules}
+            disabled={isDeploying}
+            className="flex items-center gap-2 bg-[#1f1f1f] hover:bg-[#2a2a2a] border border-[#333] text-neutral-100 text-xs px-3.5 py-2 rounded-lg transition-colors font-medium shadow-sm"
+            title="Deploy latest rule definitions to all connected Chrome extensions"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-neutral-400" />
-            <span>Bump Version</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isDeploying ? "animate-spin text-emerald-400" : "text-emerald-400"}`} />
+            <span>{isDeploying ? "Deploying..." : "Deploy Rules to Fleet"}</span>
           </button>
         </div>
       </div>
@@ -263,7 +345,7 @@ export const SecurityRulesView: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Description or justification (e.g. Verified B2B Partner Portal)"
+                placeholder="Description / Purpose (e.g. Authorized Vendor Portal)"
                 value={wlDesc}
                 onChange={e => setWlDesc(e.target.value)}
                 className="bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-400"
@@ -303,6 +385,7 @@ export const SecurityRulesView: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#191919] text-neutral-400 font-semibold uppercase text-[10px] tracking-wider border-b border-[#262626]">
                   <tr>
+                    <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Pattern</th>
                     <th className="px-4 py-3">Description</th>
                     <th className="px-4 py-3">Added By</th>
@@ -312,13 +395,27 @@ export const SecurityRulesView: React.FC = () => {
                 <tbody className="divide-y divide-[#222]">
                   {filteredWhitelist.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-neutral-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
                         No whitelist rules match your criteria.
                       </td>
                     </tr>
                   ) : (
                     filteredWhitelist.map(rule => (
                       <tr key={rule.id} className="hover:bg-[#1a1a1a] transition-colors">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleToggleWhitelist(rule)}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                              rule.enabled !== false
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                                : "bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700"
+                            }`}
+                            title="Click to toggle Enabled/Disabled"
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${rule.enabled !== false ? "bg-emerald-400" : "bg-neutral-500"}`}></span>
+                            {rule.enabled !== false ? "ACTIVE" : "DISABLED"}
+                          </button>
+                        </td>
                         <td className="px-4 py-3 font-mono font-medium text-emerald-300">
                           {rule.pattern}
                         </td>
@@ -329,13 +426,30 @@ export const SecurityRulesView: React.FC = () => {
                           {rule.addedBy || "Admin"}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleDeleteWhitelist(rule.id)}
-                            className="text-neutral-400 hover:text-red-400 transition-colors p-1"
-                            title="Delete Rule"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() =>
+                                setEditingRule({
+                                  id: rule.id,
+                                  type: "whitelist",
+                                  pattern: rule.pattern,
+                                  descriptionOrReason: rule.description || "",
+                                  enabled: rule.enabled !== false
+                                })
+                              }
+                              className="text-neutral-400 hover:text-neutral-200 transition-colors p-1"
+                              title="Edit Rule"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteWhitelist(rule.id)}
+                              className="text-neutral-400 hover:text-red-400 transition-colors p-1"
+                              title="Delete Rule"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -415,6 +529,7 @@ export const SecurityRulesView: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#191919] text-neutral-400 font-semibold uppercase text-[10px] tracking-wider border-b border-[#262626]">
                   <tr>
+                    <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Pattern</th>
                     <th className="px-4 py-3">Severity</th>
                     <th className="px-4 py-3">Reason</th>
@@ -425,13 +540,27 @@ export const SecurityRulesView: React.FC = () => {
                 <tbody className="divide-y divide-[#222]">
                   {filteredPhishing.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
                         No phishing blacklist rules recorded.
                       </td>
                     </tr>
                   ) : (
                     filteredPhishing.map(rule => (
                       <tr key={rule.id} className="hover:bg-[#1a1a1a] transition-colors">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleTogglePhishing(rule)}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                              rule.enabled !== false
+                                ? "bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20"
+                                : "bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700"
+                            }`}
+                            title="Click to toggle Enabled/Disabled"
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${rule.enabled !== false ? "bg-red-400" : "bg-neutral-500"}`}></span>
+                            {rule.enabled !== false ? "ACTIVE" : "DISABLED"}
+                          </button>
+                        </td>
                         <td className="px-4 py-3 font-mono font-medium text-red-300">
                           {rule.pattern}
                         </td>
@@ -453,13 +582,31 @@ export const SecurityRulesView: React.FC = () => {
                           {rule.addedBy || "Admin"}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleDeletePhishing(rule.id)}
-                            className="text-neutral-400 hover:text-red-400 transition-colors p-1"
-                            title="Delete Rule"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() =>
+                                setEditingRule({
+                                  id: rule.id,
+                                  type: "phishing",
+                                  pattern: rule.pattern,
+                                  descriptionOrReason: rule.reason || "",
+                                  severity: rule.severity,
+                                  enabled: rule.enabled !== false
+                                })
+                              }
+                              className="text-neutral-400 hover:text-neutral-200 transition-colors p-1"
+                              title="Edit Rule"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePhishing(rule.id)}
+                              className="text-neutral-400 hover:text-red-400 transition-colors p-1"
+                              title="Delete Rule"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -467,6 +614,98 @@ export const SecurityRulesView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Rule Modal */}
+      {editingRule && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-[#121212] border border-[#2c2c2c] rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+              <h3 className="text-sm font-bold text-neutral-100 flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-emerald-400" />
+                <span>Edit {editingRule.type === "whitelist" ? "Whitelist" : "Phishing"} Rule</span>
+              </h3>
+              <button
+                onClick={() => setEditingRule(null)}
+                className="text-neutral-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-400 block mb-1">
+                  Pattern / Domain
+                </label>
+                <input
+                  type="text"
+                  value={editingRule.pattern}
+                  onChange={e => setEditingRule({ ...editingRule, pattern: e.target.value })}
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-100 font-mono focus:outline-none focus:border-neutral-400"
+                  required
+                />
+              </div>
+
+              {editingRule.type === "phishing" && (
+                <div>
+                  <label className="text-[11px] font-semibold text-neutral-400 block mb-1">
+                    Severity
+                  </label>
+                  <select
+                    value={editingRule.severity}
+                    onChange={e => setEditingRule({ ...editingRule, severity: e.target.value as any })}
+                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-100 focus:outline-none"
+                  >
+                    <option value="HIGH">HIGH</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-400 block mb-1">
+                  {editingRule.type === "whitelist" ? "Description / Notes" : "Interception Reason"}
+                </label>
+                <input
+                  type="text"
+                  value={editingRule.descriptionOrReason}
+                  onChange={e => setEditingRule({ ...editingRule, descriptionOrReason: e.target.value })}
+                  className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-100 focus:outline-none focus:border-neutral-400"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="ruleEnabledCheckbox"
+                  checked={editingRule.enabled}
+                  onChange={e => setEditingRule({ ...editingRule, enabled: e.target.checked })}
+                  className="rounded bg-[#0a0a0a] border-[#333] text-emerald-500 focus:ring-0"
+                />
+                <label htmlFor="ruleEnabledCheckbox" className="text-xs text-neutral-300 cursor-pointer">
+                  Rule is active and enforced by extensions
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#262626]">
+                <button
+                  type="button"
+                  onClick={() => setEditingRule(null)}
+                  className="px-3 py-1.5 text-xs text-neutral-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 text-xs font-bold bg-white text-black hover:bg-neutral-200 rounded-lg transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

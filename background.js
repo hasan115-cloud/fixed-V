@@ -273,10 +273,18 @@ async function sendHeartbeat() {
 function syncRules(rules, ruleVersion) {
     if (!rules) return;
     if (rules.whitelist && Array.isArray(rules.whitelist)) {
-        serverWhitelistRules = new Set(rules.whitelist.map(r => (typeof r === "string" ? r : r.pattern).toLowerCase()));
+        serverWhitelistRules = new Set(
+            rules.whitelist
+                .filter(r => (typeof r === "object" ? r.enabled !== false : true))
+                .map(r => (typeof r === "string" ? r : r.pattern).toLowerCase())
+        );
     }
     if (rules.phishing && Array.isArray(rules.phishing)) {
-        serverPhishingRules = new Set(rules.phishing.map(r => (typeof r === "string" ? r : r.pattern).toLowerCase()));
+        serverPhishingRules = new Set(
+            rules.phishing
+                .filter(r => (typeof r === "object" ? r.enabled !== false : true))
+                .map(r => (typeof r === "string" ? r : r.pattern).toLowerCase())
+        );
     }
     if (typeof ruleVersion === "number") {
         localRuleVersion = ruleVersion;
@@ -365,7 +373,7 @@ function newEventId() {
 // connection, the very same eventId is queued for replay — and because the
 // server already stored that id, the replay is recognised as a duplicate
 // instead of becoming a second history row for a single visit.
-async function enqueueUrlEvent(url, source, eventId) {
+async function enqueueUrlEvent(url, source, eventId, meta) {
     if (!isValidMonitoredUrl(url)) return;
     try {
         if (!clientId) await initServerConfig();
@@ -374,7 +382,13 @@ async function enqueueUrlEvent(url, source, eventId) {
             eventId: eventId || newEventId(),
             url,
             source: source || "extension-navigation",
-            observedAt: new Date().toISOString()
+            observedAt: new Date().toISOString(),
+            classification: meta?.classification,
+            verdict: meta?.verdict,
+            score: meta?.score,
+            reasons: meta?.reasons,
+            ruleTriggered: meta?.ruleTriggered,
+            ruleType: meta?.ruleType
         });
         // Drop the OLDEST entries if the backlog is somehow unbounded
         // (server down for a very long time). Newest observations are the
@@ -505,27 +519,46 @@ async function scanUrl(url, source = "extension-navigation") {
         const result = {
             verdict: "PHISHING",
             score: 0.99,
-            reasons: [`Blocked by Administrator Phishing Rule: "${matchedPhish}"`],
-            ruleMatch: true
+            reasons: [`Blacklisted Rule Triggered: "${matchedPhish}"`],
+            ruleMatch: true,
+            ruleTriggered: true,
+            ruleType: "PHISHING"
         };
         verdictCache.set(url, { time: Date.now(), data: result });
         addToRecentScans(url, "PHISHING", 0.99);
         reportThreatAlert(url, 0.99, result.reasons, source);
         // A blocked navigation is still a navigation: record it in history
         // too, not only in Threat Alerts.
-        enqueueUrlEvent(url, source, eventId);
+        enqueueUrlEvent(url, source, eventId, {
+            classification: "PHISHING",
+            verdict: "BLOCKED",
+            score: 0.99,
+            reasons: result.reasons,
+            ruleTriggered: true,
+            ruleType: "PHISHING"
+        });
         return result;
     }
 
     // 2. Check Server Whitelist Rules
     const matchedWhite = matchesRuleSet(url, serverWhitelistRules);
     if (matchedWhite) {
-        enqueueUrlEvent(url, source, eventId);
+        const reasons = [`Whitelisted Rule Matched: "${matchedWhite}"`];
+        enqueueUrlEvent(url, source, eventId, {
+            classification: "SAFE",
+            verdict: "ALLOWED",
+            score: 0.0,
+            reasons,
+            ruleTriggered: true,
+            ruleType: "WHITELIST"
+        });
         return {
             verdict: "SAFE",
             score: 0,
             whitelisted: true,
-            reasons: [`Allowed by Administrator Whitelist Rule: "${matchedWhite}"`]
+            ruleTriggered: true,
+            ruleType: "WHITELIST",
+            reasons
         };
     }
 

@@ -97,6 +97,17 @@ export async function addWhitelistRule(pattern: string, description: string): Pr
   return data.rule;
 }
 
+export async function updateWhitelistRule(id: string, updates: Partial<WhitelistRule>): Promise<WhitelistRule> {
+  const res = await fetch(`/api/rules/whitelist/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) throw new Error("Failed to update whitelist rule");
+  const data = await res.json();
+  return data.rule;
+}
+
 export async function deleteWhitelistRule(id: string): Promise<boolean> {
   const res = await fetch(`/api/rules/whitelist/${id}`, { method: "DELETE" });
   return res.ok;
@@ -109,6 +120,17 @@ export async function addPhishingRule(pattern: string, severity: "HIGH" | "CRITI
     body: JSON.stringify({ pattern, severity, reason })
   });
   if (!res.ok) throw new Error("Failed to add phishing rule");
+  const data = await res.json();
+  return data.rule;
+}
+
+export async function updatePhishingRule(id: string, updates: Partial<PhishingRule>): Promise<PhishingRule> {
+  const res = await fetch(`/api/rules/phishing/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) throw new Error("Failed to update phishing rule");
   const data = await res.json();
   return data.rule;
 }

@@ -248,6 +248,53 @@ async function main() {
     assert.ok(res.json?.breakdown);
   });
 
+  // 13. Security Rule Enable/Disable & Update via PATCH
+  await runTest("PATCH /api/rules/whitelist/:id toggles rule active state", async () => {
+    if (!testRuleId) return;
+    const patchRes = await api(`/api/rules/whitelist/${testRuleId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled: false, description: "Temporarily disabled rule" })
+    });
+    assert.strictEqual(patchRes.status, 200);
+    assert.strictEqual(patchRes.json?.success, true);
+    assert.strictEqual(patchRes.json?.rule?.enabled, false);
+
+    // Re-enable
+    const reEnableRes = await api(`/api/rules/whitelist/${testRuleId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled: true })
+    });
+    assert.strictEqual(reEnableRes.status, 200);
+    assert.strictEqual(reEnableRes.json?.rule?.enabled, true);
+  });
+
+  // 14. Direct Admin On-Device Verify Uninstall Endpoint
+  await runTest("POST /api/admin/verify-uninstall authorizes valid admin credentials", async () => {
+    const res = await api("/api/admin/verify-uninstall", {
+      method: "POST",
+      body: JSON.stringify({
+        username: "admin",
+        password: "admin123",
+        clientId: "test-device-uninstall-verify",
+        clientName: "Test Device"
+      })
+    });
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.json?.authorized, true);
+  });
+
+  // 15. Reports Endpoint with Date and Time Filters
+  await runTest("GET /api/reports?startDate=...&endDate=... computes filtered metrics", async () => {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 3600 * 1000).toISOString();
+    const future = new Date(now.getTime() + 3600 * 1000).toISOString();
+    const res = await api(`/api/reports?startDate=${encodeURIComponent(oneHourAgo)}&endDate=${encodeURIComponent(future)}`, { method: "GET" });
+    assert.strictEqual(res.status, 200);
+    assert.ok(typeof res.json?.summary?.totalEvaluated === "number");
+    assert.ok(Array.isArray(res.json?.events));
+    assert.ok(Array.isArray(res.json?.topThreatDomains));
+  });
+
   // Cleanup created rule
   if (testRuleId) {
     await api(`/api/rules/whitelist/${testRuleId}`, { method: "DELETE" }).catch(() => {});

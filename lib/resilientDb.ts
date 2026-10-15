@@ -126,6 +126,13 @@ export class ResilientDatabase implements IDatabase {
     return this.tryOp(db => db.addWhitelistRule(pattern, description, addedBy));
   }
 
+  public updateWhitelistRule(
+    id: string,
+    updates: Partial<WhitelistRule>
+  ): Promise<WhitelistRule | null> {
+    return this.tryOp(db => db.updateWhitelistRule(id, updates));
+  }
+
   public deleteWhitelistRule(id: string): Promise<boolean> {
     return this.tryOp(db => db.deleteWhitelistRule(id));
   }
@@ -141,6 +148,13 @@ export class ResilientDatabase implements IDatabase {
     addedBy?: string
   ): Promise<PhishingRule> {
     return this.tryOp(db => db.addPhishingRule(pattern, severity, reason, addedBy));
+  }
+
+  public updatePhishingRule(
+    id: string,
+    updates: Partial<PhishingRule>
+  ): Promise<PhishingRule | null> {
+    return this.tryOp(db => db.updatePhishingRule(id, updates));
   }
 
   public deletePhishingRule(id: string): Promise<boolean> {

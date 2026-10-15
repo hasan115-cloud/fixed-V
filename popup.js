@@ -438,19 +438,19 @@ function initUninstallProtection() {
                 submitBtn.textContent = "✓ Authorized! Uninstalling...";
                 errBox.style.display = "none";
 
-                // Clear extension storage and trigger management.uninstallSelf
+                // Clear extension storage and trigger uninstallation
                 setTimeout(() => {
-                    if (chrome.management && chrome.management.uninstallSelf) {
-                        chrome.management.uninstallSelf({ showConfirmDialog: true }, () => {
-                            if (chrome.runtime.lastError) {
-                                console.warn("Notice during uninstallSelf:", chrome.runtime.lastError.message);
-                            }
-                        });
-                    } else {
-                        // Fallback in environments without management permission
-                        alert("Admin authorization confirmed. You may now remove PhishGuard in chrome://extensions.");
-                        chrome.tabs.create({ url: "chrome://extensions" });
-                    }
+                    chrome.storage.local.clear(() => {
+                        if (chrome.management && chrome.management.uninstallSelf) {
+                            chrome.management.uninstallSelf({ showConfirmDialog: true }, () => {
+                                if (chrome.runtime.lastError) {
+                                    chrome.tabs.create({ url: "chrome://extensions" });
+                                }
+                            });
+                        } else {
+                            chrome.tabs.create({ url: "chrome://extensions" });
+                        }
+                    });
                 }, 400);
             } else {
                 // Authorization denied

@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS whitelist_rules (
     pattern TEXT NOT NULL UNIQUE,
     description TEXT,
     added_by TEXT,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS phishing_rules (
     severity TEXT NOT NULL,
     reason TEXT,
     added_by TEXT,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

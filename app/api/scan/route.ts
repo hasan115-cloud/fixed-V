@@ -29,13 +29,15 @@ export async function POST(req: NextRequest) {
       reason: result.reasons?.length ? result.reasons.join("; ") : "Analyzed",
       clientId,
       clientName,
-      source
+      source,
+      ruleTriggered: result.ruleTriggered || false,
+      ruleType: result.ruleType || null
     };
 
-    await db.recordUrlEvent(recordPayload);
+    const { wasNew } = await db.recordUrlEvent(recordPayload);
 
-    // If phishing or suspicious high threat score, record active threat alert
-    if (result.verdict === "PHISHING" || result.score >= 0.8) {
+    // If phishing or suspicious high threat score, record active threat alert (prevent duplicates if retried)
+    if (wasNew && (result.verdict === "PHISHING" || result.score >= 0.8)) {
       await db.recordThreatAlert({
         clientId,
         clientName,

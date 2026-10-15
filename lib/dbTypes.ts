@@ -15,6 +15,8 @@ export interface UrlEventFilters {
   search?: string;
   limit?: number;
   offset?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface UrlEventsResult {
@@ -111,6 +113,10 @@ export interface IDatabase {
     description: string,
     addedBy?: string
   ): Promise<WhitelistRule>;
+  updateWhitelistRule(
+    id: string,
+    updates: Partial<WhitelistRule>
+  ): Promise<WhitelistRule | null>;
   deleteWhitelistRule(id: string): Promise<boolean>;
   getPhishingRules(): Promise<PhishingRule[]>;
   addPhishingRule(
@@ -119,6 +125,10 @@ export interface IDatabase {
     reason: string,
     addedBy?: string
   ): Promise<PhishingRule>;
+  updatePhishingRule(
+    id: string,
+    updates: Partial<PhishingRule>
+  ): Promise<PhishingRule | null>;
   deletePhishingRule(id: string): Promise<boolean>;
   getDashboardStats(clientId?: string): Promise<DashboardStatsResult>;
   getReportData(

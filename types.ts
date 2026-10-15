@@ -72,6 +72,7 @@ export interface WhitelistRule {
   id: string;
   pattern: string;
   description: string;
+  enabled?: boolean;
   addedBy?: string;
   createdAt: string;
 }
@@ -81,6 +82,7 @@ export interface PhishingRule {
   pattern: string;
   severity: "HIGH" | "CRITICAL";
   reason: string;
+  enabled?: boolean;
   addedBy?: string;
   createdAt: string;
 }

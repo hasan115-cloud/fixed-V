@@ -100,8 +100,10 @@ export class PostgresDatabase implements IDatabase {
           pattern TEXT NOT NULL UNIQUE,
           description TEXT,
           added_by TEXT,
+          enabled BOOLEAN NOT NULL DEFAULT TRUE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+        ALTER TABLE whitelist_rules ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT TRUE;
 
         CREATE TABLE IF NOT EXISTS phishing_rules (
           id TEXT PRIMARY KEY,
@@ -109,8 +111,10 @@ export class PostgresDatabase implements IDatabase {
           severity TEXT NOT NULL,
           reason TEXT,
           added_by TEXT,
+          enabled BOOLEAN NOT NULL DEFAULT TRUE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+        ALTER TABLE phishing_rules ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT TRUE;
 
         CREATE TABLE IF NOT EXISTS removal_requests (
           id TEXT PRIMARY KEY,
@@ -240,6 +244,16 @@ export class PostgresDatabase implements IDatabase {
       );
       values.push(`%${filters.search.trim().toLowerCase()}%`);
       idx++;
+    }
+
+    if (filters?.startDate) {
+      conditions.push(`occurred_at >= $${idx++}`);
+      values.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push(`occurred_at <= $${idx++}`);
+      values.push(filters.endDate);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -434,6 +448,29 @@ export class PostgresDatabase implements IDatabase {
   public async recordThreatAlert(
     alert: Omit<ThreatAlert, "id" | "timestamp" | "status">
   ): Promise<ThreatAlert> {
+    const existing = await this.pool.query(
+      `SELECT * FROM threat_alerts 
+       WHERE client_id = $1 AND url = $2 AND status = 'ACTIVE' 
+         AND occurred_at >= (now() - interval '5 minutes')
+       LIMIT 1`,
+      [alert.clientId, alert.url]
+    );
+    if (existing.rows.length > 0) {
+      const r = existing.rows[0];
+      return {
+        id: r.id,
+        clientId: r.client_id,
+        clientName: r.client_name,
+        url: r.url,
+        domain: r.domain,
+        score: r.score,
+        reasons: typeof r.reasons === "string" ? JSON.parse(r.reasons) : r.reasons || [],
+        source: r.source,
+        status: r.status,
+        timestamp: new Date(r.occurred_at).toISOString()
+      };
+    }
+
     const id = `alt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const now = new Date().toISOString();
 
@@ -543,6 +580,7 @@ export class PostgresDatabase implements IDatabase {
       id: r.id,
       pattern: r.pattern,
       description: r.description,
+      enabled: r.enabled !== false,
       addedBy: r.added_by,
       createdAt: new Date(r.created_at).toISOString()
     }));
@@ -558,9 +596,9 @@ export class PostgresDatabase implements IDatabase {
     const now = new Date().toISOString();
 
     await this.pool.query(
-      `INSERT INTO whitelist_rules (id, pattern, description, added_by, created_at)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (pattern) DO UPDATE SET description = $3`,
+      `INSERT INTO whitelist_rules (id, pattern, description, added_by, enabled, created_at)
+       VALUES ($1, $2, $3, $4, TRUE, $5)
+       ON CONFLICT (pattern) DO UPDATE SET description = $3, enabled = TRUE`,
       [id, cleanPattern, description, addedBy, now]
     );
 
@@ -569,9 +607,44 @@ export class PostgresDatabase implements IDatabase {
       id,
       pattern: cleanPattern,
       description,
+      enabled: true,
       addedBy,
       createdAt: now
     };
+  }
+
+  public async updateWhitelistRule(
+    id: string,
+    updates: Partial<WhitelistRule>
+  ): Promise<WhitelistRule | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (updates.pattern) {
+      const cleanPattern = updates.pattern.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+      fields.push(`pattern = $${idx++}`);
+      values.push(cleanPattern);
+    }
+    if (typeof updates.description === "string") {
+      fields.push(`description = $${idx++}`);
+      values.push(updates.description.trim());
+    }
+    if (typeof updates.enabled === "boolean") {
+      fields.push(`enabled = $${idx++}`);
+      values.push(updates.enabled);
+    }
+
+    if (fields.length === 0) return (await this.getWhitelistRules()).find(r => r.id === id) || null;
+
+    values.push(id);
+    await this.pool.query(
+      `UPDATE whitelist_rules SET ${fields.join(", ")} WHERE id = $${idx}`,
+      values
+    );
+    await this.bumpRuleVersion();
+    const rules = await this.getWhitelistRules();
+    return rules.find(r => r.id === id) || null;
   }
 
   public async deleteWhitelistRule(id: string): Promise<boolean> {
@@ -590,6 +663,7 @@ export class PostgresDatabase implements IDatabase {
       pattern: r.pattern,
       severity: r.severity,
       reason: r.reason,
+      enabled: r.enabled !== false,
       addedBy: r.added_by,
       createdAt: new Date(r.created_at).toISOString()
     }));
@@ -606,9 +680,9 @@ export class PostgresDatabase implements IDatabase {
     const now = new Date().toISOString();
 
     await this.pool.query(
-      `INSERT INTO phishing_rules (id, pattern, severity, reason, added_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (pattern) DO UPDATE SET severity = $3, reason = $4`,
+      `INSERT INTO phishing_rules (id, pattern, severity, reason, added_by, enabled, created_at)
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+       ON CONFLICT (pattern) DO UPDATE SET severity = $3, reason = $4, enabled = TRUE`,
       [id, cleanPattern, severity, reason, addedBy, now]
     );
 
@@ -618,9 +692,48 @@ export class PostgresDatabase implements IDatabase {
       pattern: cleanPattern,
       severity,
       reason,
+      enabled: true,
       addedBy,
       createdAt: now
     };
+  }
+
+  public async updatePhishingRule(
+    id: string,
+    updates: Partial<PhishingRule>
+  ): Promise<PhishingRule | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (updates.pattern) {
+      const cleanPattern = updates.pattern.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+      fields.push(`pattern = $${idx++}`);
+      values.push(cleanPattern);
+    }
+    if (updates.severity) {
+      fields.push(`severity = $${idx++}`);
+      values.push(updates.severity);
+    }
+    if (typeof updates.reason === "string") {
+      fields.push(`reason = $${idx++}`);
+      values.push(updates.reason.trim());
+    }
+    if (typeof updates.enabled === "boolean") {
+      fields.push(`enabled = $${idx++}`);
+      values.push(updates.enabled);
+    }
+
+    if (fields.length === 0) return (await this.getPhishingRules()).find(r => r.id === id) || null;
+
+    values.push(id);
+    await this.pool.query(
+      `UPDATE phishing_rules SET ${fields.join(", ")} WHERE id = $${idx}`,
+      values
+    );
+    await this.bumpRuleVersion();
+    const rules = await this.getPhishingRules();
+    return rules.find(r => r.id === id) || null;
   }
 
   public async deletePhishingRule(id: string): Promise<boolean> {
@@ -704,24 +817,73 @@ export class PostgresDatabase implements IDatabase {
   ): Promise<ReportDataResult> {
     const isGlobal = !clientId || clientId === "ALL";
     const clients = await this.getClients();
-    const stats = await this.getDashboardStats(clientId);
-    const eventsRes = await this.getUrlEvents({ clientId, limit: 1000 });
-    const alerts = await this.getThreatAlerts(clientId);
+    const eventsRes = await this.getUrlEvents({ clientId, startDate, endDate, limit: 1000 });
+    
+    let alerts = await this.getThreatAlerts(clientId);
+    if (startDate) {
+      alerts = alerts.filter(a => a.timestamp >= startDate);
+    }
+    if (endDate) {
+      alerts = alerts.filter(a => a.timestamp <= endDate);
+    }
+
+    let safeCount = 0;
+    let suspiciousCount = 0;
+    let phishingCount = 0;
+    for (const e of eventsRes.events) {
+      if (e.classification === "PHISHING") phishingCount++;
+      else if (e.classification === "SUSPICIOUS") suspiciousCount++;
+      else safeCount++;
+    }
+
+    const threatDomainCounts = new Map<string, number>();
+    alerts.forEach(a => {
+      if (a.domain) threatDomainCounts.set(a.domain, (threatDomainCounts.get(a.domain) || 0) + 1);
+    });
+    const topThreatDomains = Array.from(threatDomainCounts.entries())
+      .map(([domain, count]) => ({ domain, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const perSystem = isGlobal
+      ? clients.map(c => {
+          const clientEvents = eventsRes.events.filter(e => e.clientId === c.id);
+          const clientAlerts = alerts.filter(a => a.clientId === c.id);
+          let cSafe = 0, cSuspicious = 0, cPhishing = 0;
+          for (const ce of clientEvents) {
+            if (ce.classification === "PHISHING") cPhishing++;
+            else if (ce.classification === "SUSPICIOUS") cSuspicious++;
+            else cSafe++;
+          }
+          return {
+            clientId: c.id,
+            clientName: c.clientName,
+            os: c.os,
+            browser: c.browser,
+            totalScanned: clientEvents.length,
+            safe: cSafe,
+            suspicious: cSuspicious,
+            phishing: cPhishing,
+            activeAlerts: clientAlerts.filter(a => a.status === "ACTIVE").length
+          };
+        })
+      : [];
 
     return {
       scope: isGlobal ? "ALL" : clientId!,
       generatedAt: new Date().toISOString(),
       systems: isGlobal ? clients : clients.filter(c => c.id === clientId),
       summary: {
-        totalEvaluated: stats.breakdown.evaluated,
-        safe: stats.breakdown.safe,
-        suspicious: stats.breakdown.suspicious,
-        phishing: stats.breakdown.phishing,
-        activeAlerts: stats.activeAlerts
+        totalEvaluated: eventsRes.events.length,
+        safe: safeCount,
+        suspicious: suspiciousCount,
+        phishing: phishingCount,
+        activeAlerts: alerts.filter(a => a.status === "ACTIVE").length
       },
-      topThreatDomains: stats.topThreatDomains,
+      topThreatDomains,
       events: eventsRes.events,
-      alerts: alerts.slice(0, 500)
+      alerts: alerts.slice(0, 500),
+      perSystem
     };
   }
 

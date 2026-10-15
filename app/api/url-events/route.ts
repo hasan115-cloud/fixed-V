@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
       const eventId = evt.eventId || `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
-      await db.recordUrlEvent(
+      const { wasNew } = await db.recordUrlEvent(
         {
           eventId,
           url: evt.url,
@@ -51,14 +51,17 @@ export async function POST(req: NextRequest) {
           reason,
           clientId: clientId || evt.clientId || "unknown-client",
           clientName: clientName || evt.clientName || "Unknown Workstation",
-          source: evt.source || "extension-telemetry"
+          source: evt.source || "extension-telemetry",
+          ruleTriggered: evt.ruleTriggered ?? Boolean(evt.ruleMatch),
+          ruleType: evt.ruleType || (classification === "PHISHING" && evt.ruleMatch ? "PHISHING" : null)
         },
         evt.observedAt || evt.timestamp
       );
 
       acknowledgedIds.push(eventId);
 
-      if (classification === "PHISHING" || score >= 0.8) {
+      // Avoid duplicate alerts when the same event is retried
+      if (wasNew && (classification === "PHISHING" || score >= 0.8)) {
         await db.recordThreatAlert({
           clientId: clientId || evt.clientId || "unknown-client",
           clientName: clientName || evt.clientName || "Unknown Workstation",

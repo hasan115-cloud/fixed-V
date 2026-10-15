@@ -64,6 +64,7 @@ export async function classifyUrl(rawUrl: string): Promise<ClassificationResult>
   try {
     const whitelist = await db.getWhitelistRules();
     for (const rule of whitelist) {
+      if (rule.enabled === false) continue;
       const pat = rule.pattern.toLowerCase();
       if (domain === pat || domain.endsWith("." + pat) || rawUrl.toLowerCase().includes(pat)) {
         return {
@@ -72,7 +73,7 @@ export async function classifyUrl(rawUrl: string): Promise<ClassificationResult>
           verdict: "SAFE",
           action: "ALLOWED",
           score: 0.0,
-          reasons: [`Whitelisted by policy: ${rule.description || rule.pattern}`],
+          reasons: [`Whitelisted Rule Matched: ${rule.pattern}${rule.description ? ` (${rule.description})` : ""}`],
           ruleTriggered: true,
           ruleType: "WHITELIST"
         };
@@ -86,6 +87,7 @@ export async function classifyUrl(rawUrl: string): Promise<ClassificationResult>
   try {
     const phishingRules = await db.getPhishingRules();
     for (const rule of phishingRules) {
+      if (rule.enabled === false) continue;
       const pat = rule.pattern.toLowerCase();
       if (domain === pat || domain.endsWith("." + pat) || rawUrl.toLowerCase().includes(pat)) {
         return {
@@ -94,7 +96,7 @@ export async function classifyUrl(rawUrl: string): Promise<ClassificationResult>
           verdict: "PHISHING",
           action: "BLOCKED",
           score: 0.99,
-          reasons: [`Blocked by central phishing policy: ${rule.reason || rule.pattern}`],
+          reasons: [`Blacklisted Rule Triggered: ${rule.pattern}${rule.reason ? ` (${rule.reason})` : ""}`],
           ruleTriggered: true,
           ruleType: "PHISHING"
         };

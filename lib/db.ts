@@ -426,6 +426,13 @@ class FileDatabase implements IDatabase {
       );
     }
 
+    if (filters?.startDate) {
+      filtered = filtered.filter(e => e.timestamp >= filters.startDate!);
+    }
+    if (filters?.endDate) {
+      filtered = filtered.filter(e => e.timestamp <= filters.endDate!);
+    }
+
     const total = filtered.length;
     const offset = filters?.offset || 0;
     // No artificial cap unless the caller asks for one — "complete history
@@ -612,6 +619,15 @@ class FileDatabase implements IDatabase {
   // ─── Threat Alerts ───────────────────────────────────────────────────────
   public async recordThreatAlert(alert: Omit<ThreatAlert, "id" | "timestamp" | "status">): Promise<ThreatAlert> {
     this.ensureLoaded();
+
+    const existingAlert = this.data.threatAlerts.find(
+      a => a.clientId === alert.clientId && a.url === alert.url && a.status === "ACTIVE" &&
+           (Date.now() - new Date(a.timestamp).getTime() < 5 * 60 * 1000)
+    );
+    if (existingAlert) {
+      return existingAlert;
+    }
+
     const newAlert: ThreatAlert = {
       ...alert,
       id: `alt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -681,12 +697,20 @@ class FileDatabase implements IDatabase {
     this.ensureLoaded();
     const cleanPattern = pattern.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
     const existing = this.data.whitelistRules.find(r => r.pattern === cleanPattern);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.enabled === false) {
+        existing.enabled = true;
+        this.data.ruleVersion = (this.data.ruleVersion || 1) + 1;
+        this.flushSync();
+      }
+      return existing;
+    }
 
     const rule: WhitelistRule = {
       id: `wl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       pattern: cleanPattern,
       description: description.trim() || "Whitelisted domain",
+      enabled: true,
       createdAt: new Date().toISOString(),
       addedBy
     };
@@ -694,6 +718,18 @@ class FileDatabase implements IDatabase {
     this.data.ruleVersion = (this.data.ruleVersion || 1) + 1;
     this.flushSync();
     return rule;
+  }
+
+  public async updateWhitelistRule(id: string, updates: Partial<WhitelistRule>): Promise<WhitelistRule | null> {
+    this.ensureLoaded();
+    const rule = this.data.whitelistRules.find(r => r.id === id);
+    if (!rule) return null;
+    if (updates.pattern) rule.pattern = updates.pattern.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (typeof updates.description === "string") rule.description = updates.description.trim();
+    if (typeof updates.enabled === "boolean") rule.enabled = updates.enabled;
+    this.data.ruleVersion = (this.data.ruleVersion || 1) + 1;
+    this.flushSync();
+    return { ...rule };
   }
 
   public async deleteWhitelistRule(id: string): Promise<boolean> {
@@ -715,13 +751,21 @@ class FileDatabase implements IDatabase {
     this.ensureLoaded();
     const cleanPattern = pattern.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
     const existing = this.data.phishingRules.find(r => r.pattern === cleanPattern);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.enabled === false) {
+        existing.enabled = true;
+        this.data.ruleVersion = (this.data.ruleVersion || 1) + 1;
+        this.flushSync();
+      }
+      return existing;
+    }
 
     const rule: PhishingRule = {
       id: `ph_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       pattern: cleanPattern,
       severity,
       reason: reason.trim() || "Identified malicious phishing target",
+      enabled: true,
       createdAt: new Date().toISOString(),
       addedBy
     };
@@ -729,6 +773,19 @@ class FileDatabase implements IDatabase {
     this.data.ruleVersion = (this.data.ruleVersion || 1) + 1;
     this.flushSync();
     return rule;
+  }
+
+  public async updatePhishingRule(id: string, updates: Partial<PhishingRule>): Promise<PhishingRule | null> {
+    this.ensureLoaded();
+    const rule = this.data.phishingRules.find(r => r.id === id);
+    if (!rule) return null;
+    if (updates.pattern) rule.pattern = updates.pattern.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (updates.severity) rule.severity = updates.severity;
+    if (typeof updates.reason === "string") rule.reason = updates.reason.trim();
+    if (typeof updates.enabled === "boolean") rule.enabled = updates.enabled;
+    this.data.ruleVersion = (this.data.ruleVersion || 1) + 1;
+    this.flushSync();
+    return { ...rule };
   }
 
   public async deletePhishingRule(id: string): Promise<boolean> {
